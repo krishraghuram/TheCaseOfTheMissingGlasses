@@ -1,0 +1,8 @@
+/home/raghuram/Workspace/stardew-calculators/TheCaseOfTheMissingGlasses/bin/Debug/net8.0/TheCaseOfTheMissingGlasses.deps.json
+/home/raghuram/Workspace/stardew-calculators/TheCaseOfTheMissingGlasses/bin/Debug/net8.0/TheCaseOfTheMissingGlasses.dll
+/home/raghuram/Workspace/stardew-calculators/TheCaseOfTheMissingGlasses/obj/Debug/net8.0/TheCaseOfTheMissingGlasses.csproj.AssemblyReference.cache
+/home/raghuram/Workspace/stardew-calculators/TheCaseOfTheMissingGlasses/obj/Debug/net8.0/TheCaseOfTheMissingGlasses.GeneratedMSBuildEditorConfig.editorconfig
+/home/raghuram/Workspace/stardew-calculators/TheCaseOfTheMissingGlasses/obj/Debug/net8.0/TheCaseOfTheMissingGlasses.AssemblyInfoInputs.cache
+/home/raghuram/Workspace/stardew-calculators/TheCaseOfTheMissingGlasses/obj/Debug/net8.0/TheCaseOfTheMissingGlasses.AssemblyInfo.cs
+/home/raghuram/Workspace/stardew-calculators/TheCaseOfTheMissingGlasses/obj/Debug/net8.0/TheCaseOfTheMissingGlasses.csproj.CoreCompileInputs.cache
+/home/raghuram/Workspace/stardew-calculators/TheCaseOfTheMissingGlasses/obj/Debug/net8.0/TheCaseOfTheMissingGlasses.dll

@@ -1,0 +1,10 @@
+{
+  "Name": "The Case of the Missing Glasses",
+  "Author": "krish.raghuram@gmail.com",
+  "Version": "1.0.0",
+  "Description": "Adds the Magnifying Glass to Krobus's shop until Fall 28 Year 1, with lore explaining the Winter Mystery quest. Suppresses the Winter Mystery quest if already owned.",
+  "UniqueID": "Raghu.KrobusMagnifyingGlass",
+  "EntryDll": "TheCaseOfTheMissingGlasses.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": []
+}
