@@ -27,6 +27,7 @@ namespace KrobusMagnifyingGlass
         {
             helper.Events.Content.AssetRequested += OnAssetRequested;
             helper.Events.Player.InventoryChanged += OnInventoryChanged;
+            helper.Events.GameLoop.DayStarted     += OnDayStarted;
         }
 
         // -------------------------------------------------------
@@ -182,6 +183,14 @@ namespace KrobusMagnifyingGlass
 
                 break;
             }
+        }
+
+        private void OnDayStarted(object? sender, DayStartedEventArgs e)
+        {
+            // Always reload Krobus's dialogue on day start so the correct
+            // variant (pre/post Magnifying Glass) is picked up regardless
+            // of how HasMagnifyingGlass was set — shop purchase, quest, etc.
+            Helper.GameContent.InvalidateCache("Characters/Dialogue/Krobus");
         }
     }
 }
