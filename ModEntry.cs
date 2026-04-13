@@ -35,7 +35,6 @@ namespace KrobusMagnifyingGlass
         private void OnAssetRequested(object? sender, AssetRequestedEventArgs e)
         {
             Monitor.Log("Patching Data/Shops...", LogLevel.Debug);
-
             // --- Define the item in Data/Objects ---
             if (e.NameWithoutLocale.IsEquivalentTo("Data/Objects"))
             {
@@ -44,22 +43,23 @@ namespace KrobusMagnifyingGlass
                     var data = asset.AsDictionary<string, ObjectData>().Data;
                     data[ITEM_ID] = new ObjectData
                     {
-                        Name        = ITEM_ID,
-                        DisplayName = "Magnifying Glass",
-                        Description =
+                        Name          = ITEM_ID,
+                        DisplayName   = "Magnifying Glass",
+                        Description   =
                             "We shadow people are infatuated by glass! Clever of humans " +
                             "to make a material that shows what's behind it. Must be " +
                             "infused with some powerful magic, although of what kind I'm " +
                             "not so sure... And this one seems to be unique - it enlarges " +
                             "stuff behind it...",
-                        Type        = "Basic",
-                        Category    = -789, // Custom "Shadow Relic" category
-                        Price       = 5000,
-                        Edibility   = -300, // Inedible
-                        // Sprite extracted from LooseSprites/Cursors
-                        Texture     = Helper.ModContent.GetInternalAssetName("assets/magnifying_glass.png").Name,
-                        SpriteIndex = 0,
-                        ContextTags = new List<string>
+                        Type          = "Basic",
+                        Category      = -789,       // Custom "Shadow Relic" category
+                        Price         = 5000,
+                        Edibility     = -300,       // Inedible
+                        // Sprite extracted from LooseSprites/Cursors at (209, 320, 16, 16).
+                        // See assets/magnifying_glass.png in the mod folder.
+                        Texture       = Helper.ModContent.GetInternalAssetName("assets/magnifying_glass.png").Name,
+                        SpriteIndex   = 0,
+                        ContextTags   = new List<string>
                         {
                             "shadow_relic",
                             "not_placeable",
@@ -83,13 +83,19 @@ namespace KrobusMagnifyingGlass
                     var entryId = $"{ITEM_ID}_Stock";
                     if (shop.Items.Exists(i => i.Id == entryId)) return;
 
+                    // TODO: Add conditional Krobus dialogue lines:
+                    //   - If player hasn't obtained the Magnifying Glass yet:
+                    //      "I lost my magnifying glasses, if only I had my magnifying glasses, I could search for my magnifying glasses"
+                    //   - If player has obtained it (HasMagnifyingGlass flag set):
+                    //     "Oh hey, you found my missing magnifying glasses.. No no, you should keep it.. I insist.. Finder's keeper's an' all.."
                     shop.Items.Add(new ShopItemData
                     {
-                        Id               = entryId,
-                        ItemId           = ITEM_ID,
-                        Price            = 5000,
-                        AvailableStock   = 1, // Unique — only one exists
-                        PerItemCondition = "YEAR 1, !SEASON winter"
+                        Id                = entryId,
+                        ItemId            = ITEM_ID,
+                        Price             = 5000,
+                        AvailableStock    = 1, // Unique — only one exists
+                        // Only available before Winter 1 Year 1.
+                        PerItemCondition  = "YEAR 1, !SEASON winter" // Only available Fall Year 1
                     });
                 });
             }
@@ -100,83 +106,57 @@ namespace KrobusMagnifyingGlass
                 e.Edit(asset =>
                 {
                     var events = asset.AsDictionary<string, string>().Data;
+
+                    // Only patch if the vanilla key still exists (guards against
+                    // other mods or game updates changing it)
                     if (!events.TryGetValue(VANILLA_EVENT_KEY, out var script)) return;
 
                     events.Remove(VANILLA_EVENT_KEY);
-                    events[PATCHED_EVENT_KEY] = script;
-                });
-            }
-
-            // --- Krobus dialogue ---
-            if (e.NameWithoutLocale.IsEquivalentTo("Characters/Dialogue/Krobus"))
-            {
-                e.Edit(asset =>
-                {
-                    var dialogue = asset.AsDictionary<string, string>().Data;
-                    bool hasGlass = Game1.player?.mailReceived.Contains(MAIL_FLAG) ?? false;
-
-                    if (hasGlass)
-                    {
-                        // Player has the Magnifying Glass — Krobus recognises it but insists they keep it.
-                        // Uses SDV's dialogue cycling syntax ($0, $1...) so it rotates across visits.
-                        dialogue["Tue"] =
-                            "Oh hey... is that my magnifying glass? I'd recognise it anywhere.$s#$b#" +
-                            "No no, please — you keep it. Finder's keeper's an' all...$s";
-                        dialogue["Wed"] =
-                            "I see you still have the glass. It suits you, I think.$s#$b#" +
-                            "We shadow people have a saying — 'what shines in another's hands, " +
-                            "was never truly yours'.$s";
-                        dialogue["Thu"] =
-                            "Every time I see that glass, I think of how it found its way to you.$s#$b#" +
-                            "Perhaps that is its magic.$s";
-                    }
-                    else
-                    {
-                        // Player hasn't obtained the Magnifying Glass yet — Krobus laments its loss.
-                        dialogue["Tue"] =
-                            "I lost something precious recently... a glass that makes small things large.$s#$b#" +
-                            "If only I had my magnifying glass, I could search for my magnifying glass...$s";
-                        dialogue["Wed"] =
-                            "We shadow people are fascinated by glass. It shows what is behind it — " +
-                            "like a window into the unseen.$s#$b#" +
-                            "I had one. A special one. I miss it dearly.$s";
-                        dialogue["Thu"] =
-                            "Someone took it. Another of my kind, I suspect.$s#$b#" +
-                            "We are all drawn to glass. I cannot blame them. " +
-                            "But I do wish they had asked.$s";
-                    }
+                    events[PATCHED_EVENT_KEY] = script;  // Script is unchanged
                 });
             }
         }
 
         // -------------------------------------------------------
         // When the player receives our shop item:
-        //   1. Remove it from inventory — it's a wallet item
-        //   2. Set the HasMagnifyingGlass mail flag
-        //   3. Invalidate Krobus's dialogue so it updates
-        //      immediately to the "found" variant
-        //   4. Close the shop and play the hold-up animation
+        //   1. Immediately remove it from inventory (wallet item,
+        //      not an inventory item)
+        //   2. Set the vanilla HasMagnifyingGlass mail flag
+        //   3. Show the vanilla "You can now find secret notes!"
+        //      HUD message, localized automatically
         // -------------------------------------------------------
         private void OnInventoryChanged(object? sender, InventoryChangedEventArgs e)
         {
+            // Already has the flag — nothing to do
             if (e.Player.mailReceived.Contains(MAIL_FLAG)) return;
 
             foreach (var item in e.Added)
             {
                 if (item.ItemId != ITEM_ID) continue;
 
+                // Remove the dummy item — it was just a shop vehicle
                 e.Player.removeItemFromInventory(item);
+
+                // Grant the wallet item
                 e.Player.mailReceived.Add(MAIL_FLAG);
 
-                // Invalidate dialogue cache so Krobus's lines update
-                // to the post-purchase variant right away
-                Helper.GameContent.InvalidateCache("Characters/Dialogue/Krobus");
+                // OLD APPROACH: Show a custom HUD message. Downside: Doesn't trigger the hold-up animation.
+                // // Show the vanilla HUD message (auto-localized)
+                // string displayName = Game1.content.LoadString("Strings\\Objects:MagnifyingGlass");
+                // Game1.addHUDMessage(new HUDMessage(
+                //     Game1.content.LoadString("Strings\\Objects:MagnifyingGlassDescription", displayName),
+                //     HUDMessage.newQuest_type
+                // ));
 
+                // Force-close the shop dialog
                 Game1.activeClickableMenu?.exitThisMenu();
+
+                // Play the vanilla hold-up animation + message, same as the quest reward.
+                // SpecialItem(5) is the Magnifying Glass wallet item.
                 Game1.player.holdUpItemThenMessage(new SpecialItem(5));
 
                 Monitor.Log(
-                    "Player purchased Magnifying Glass from Krobus. Granted wallet item, invalidated dialogue cache, closed shop, played hold-up animation.",
+                    "Player purchased Magnifying Glass from Krobus. Granted wallet item, closed shop, played hold-up animation.",
                     LogLevel.Debug
                 );
 
