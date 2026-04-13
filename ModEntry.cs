@@ -83,14 +83,19 @@ namespace KrobusMagnifyingGlass
                     var entryId = $"{ITEM_ID}_Stock";
                     if (shop.Items.Exists(i => i.Id == entryId)) return;
 
+                    // TODO: Add conditional Krobus dialogue lines:
+                    //   - If player hasn't obtained the Magnifying Glass yet:
+                    //      "I lost my magnifying glasses, if only I had my magnifying glasses, I could search for my magnifying glasses"
+                    //   - If player has obtained it (HasMagnifyingGlass flag set):
+                    //     "Oh hey, you found my missing magnifying glasses.. No no, you should keep it.. I insist.. Finder's keeper's an' all.."
                     shop.Items.Add(new ShopItemData
                     {
                         Id                = entryId,
                         ItemId            = ITEM_ID,
                         Price             = 5000,
-                        AvailableStock = 1, // Unique — only one exists
+                        AvailableStock    = 1, // Unique — only one exists
                         // Only available before Winter 1 Year 1.
-                        PerItemCondition = "YEAR 1, !SEASON winter" // Only available Fall Year 1
+                        PerItemCondition  = "YEAR 1, !SEASON winter" // Only available Fall Year 1
                     });
                 });
             }
