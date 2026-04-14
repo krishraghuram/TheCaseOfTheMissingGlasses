@@ -25,7 +25,9 @@ namespace KrobusMagnifyingGlass
             + "#$action AddMail Current " + SEEN_LOST_DIALOGUE_FLAG + " received";
 
         private const string DIALOGUE_FOUND =
-            "Oh hey, you found my missing magnifying glasses.. No no, you should keep it.. I insist.. Finder's keeper's an' all..$h"
+            "Oh hey, you found my missing magnifying glasses.."
+            + "#$b#No no, you should keep it.."
+            + "#$b#I must insist.. Finder's keeper's..$h"
             + "#$action AddMail Current " + SEEN_FOUND_DIALOGUE_FLAG + " received";
 
         // Unique item ID — namespaced to avoid conflicts
