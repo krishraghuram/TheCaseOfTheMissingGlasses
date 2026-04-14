@@ -55,10 +55,4 @@ This mod patches `Data/Events/BusStop`, `Data/Objects`, `Characters/Dialogue/Kro
 
 ---
 
-## License
-
-This mod is provided as-is for personal use. Feel free to fork or build on it — just credit the original author.
-
----
-
 *Mod ID: `Raghu.KrobusMagnifyingGlass`*
