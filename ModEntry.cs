@@ -9,8 +9,19 @@ namespace KrobusMagnifyingGlass
 {
     public class ModEntry : Mod
     {
+        private const int DAYS_AVAILABLE = 28 * 3; // Available until Fall 28 Year 1
+
+        private const string MET_KROBUS_BEFORE_WINTER1_FLAG = "Raghu.KMG.MetKrobusBeforeWinter1";
+        private const string TOPIC_LOST_GLASSES = "Raghu.KMG.Dialogue.LostGlasses";
+        private const string TOPIC_FOUND_GLASSES = "Raghu.KMG.Dialogue.FoundGlasses";
+        private const string DIALOGUE_LETTER_ID = "Raghu.KMG_SaidLost";
+        private const string DIALOGUE = 
+            "$1 " + DIALOGUE_LETTER_ID +
+            "#I lost my magnifying glasses...#$b#If only I had my magnifying glasses, I could search for my magnifying glasses...$s#$e" +
+            "#Oh hey, you found my missing magnifying glasses.. No no, you should keep it.. I insist.. Finder's keeper's an' all..$h";
+
         // Unique item ID — namespaced to avoid conflicts
-        private const string ITEM_ID = "Raghu.KrobusMagnifyingGlass_MagnifyingGlass";
+        private const string ITEM_ID = "Raghu.KMG.MagnifyingGlass";
 
         // Vanilla Winter Mystery event key in Data/Events/BusStop
         // We need to patch this event to add a precondition that the player must NOT have the Magnifying Glass,
@@ -18,7 +29,7 @@ namespace KrobusMagnifyingGlass
         private const string VANILLA_EVENT_KEY =
             "520702/a 11 23 11 24/t 600 1600/z spring/z fall/z summer";
         private const string PATCHED_EVENT_KEY =
-            "520702/a 11 23 11 24/t 600 1600/z spring/z fall/z summer/gameStateQuery !PLAYER_HAS_FLAG Current HasMagnifyingGlass";
+            "520702/a 11 23 11 24/t 600 1600/z spring/z fall/z summer/gameStateQuery !PLAYER_HAS_MAIL Current HasMagnifyingGlass";
 
         public override void Entry(IModHelper helper)
         {
@@ -86,6 +97,16 @@ namespace KrobusMagnifyingGlass
                     events[PATCHED_EVENT_KEY] = script;
                 });
             }
+
+            // --- Patch the Dialogue event ---
+            if (e.NameWithoutLocale.IsEquivalentTo("Characters/Dialogue/Krobus.json"))
+            {
+                e.Edit(asset =>
+                {
+                    var dialogues = asset.AsDictionary<string, string>().Data;
+                    dialogues.Add(TOPIC_LOST_GLASSES, DIALOGUE);
+                });
+            }
         }
 
         // -------------------------------------------------------
@@ -145,7 +166,7 @@ namespace KrobusMagnifyingGlass
         */
         private void UpdateKrobusShop(ShopData shop)
         {
-            if ((Game1.stats.DaysPlayed <= 28 * 3) && (!Game1.player.hasMagnifyingGlass))
+            if ((Game1.stats.DaysPlayed <= DAYS_AVAILABLE) && (!Game1.player.hasMagnifyingGlass))
             {
                 Monitor.Log("Adding shop item: Magnifying Glass", LogLevel.Debug);
                 // Only available until Fall 28 Year 1
@@ -173,6 +194,29 @@ namespace KrobusMagnifyingGlass
                 // After Fall 28 Year 1, ensure it's removed from the shop (in case player hasn't bought it yet)
                 Monitor.Log("Removing shop item: Magnifying Glass", LogLevel.Debug);
                 shop.Items?.RemoveAll(i => i.ItemId == ITEM_ID);
+            }
+        }
+
+        private void UpdateKrobusDialogue()
+        {
+            // Record that the player met Krobus while the item was still available
+            if (Game1.stats.DaysPlayed <= DAYS_AVAILABLE)
+            {
+                // If player has met Krobus, update flag
+                if (Game1.player.friendshipData.ContainsKey("Krobus"))
+                {
+                    Game1.player.mailReceived.Add(MET_KROBUS_BEFORE_WINTER1_FLAG);
+                }
+            }
+
+            // Add conversation topic if applicable
+            if (Game1.stats.DaysPlayed > DAYS_AVAILABLE) // Item has been stolen
+            {
+                // If player met Krobus before item was stolen, then they know about the item and its loss
+                if (Game1.player.mailReceived.Contains(MET_KROBUS_BEFORE_WINTER1_FLAG))
+                {
+                    Game1.player.activeDialogueEvents.TryAdd(TOPIC_LOST_GLASSES, 21);
+                }
             }
         }
     }
