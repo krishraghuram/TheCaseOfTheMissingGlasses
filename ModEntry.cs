@@ -1,4 +1,5 @@
-﻿using StardewModdingAPI;
+﻿using Microsoft.Xna.Framework;
+using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.GameData.Objects;
@@ -10,15 +11,22 @@ namespace KrobusMagnifyingGlass
     public class ModEntry : Mod
     {
         private const int DAYS_AVAILABLE = 28 * 3; // Available until Fall 28 Year 1
+        private const string MET_KROBUS_BEFORE_WINTER1_FLAG = "Raghu.KMG.Mail.MetKrobusBeforeWinter1";
+        private const string BOUGHT_FROM_KROBUS_FLAG = "Raghu.KMG.Mail.BoughtFromKrobus";
 
-        private const string MET_KROBUS_BEFORE_WINTER1_FLAG = "Raghu.KMG.MetKrobusBeforeWinter1";
-        private const string TOPIC_LOST_GLASSES = "Raghu.KMG.Dialogue.LostGlasses";
+        private const string TOPIC_LOST_GLASSES  = "Raghu.KMG.Dialogue.LostGlasses";
         private const string TOPIC_FOUND_GLASSES = "Raghu.KMG.Dialogue.FoundGlasses";
-        private const string DIALOGUE_LETTER_ID = "Raghu.KMG_SaidLost";
-        private const string DIALOGUE = 
-            "$1 " + DIALOGUE_LETTER_ID +
-            "#I lost my magnifying glasses...#$b#If only I had my magnifying glasses, I could search for my magnifying glasses...$s#$e" +
-            "#Oh hey, you found my missing magnifying glasses.. No no, you should keep it.. I insist.. Finder's keeper's an' all..$h";
+        private const string SEEN_LOST_DIALOGUE_FLAG = "Raghu.KMG.Mail.SeenLostDialogue"; 
+        private const string SEEN_FOUND_DIALOGUE_FLAG = "Raghu.KMG.Mail.SeenFoundDialogue"; 
+
+        private const string DIALOGUE_LOST =
+            "I lost my magnifying glasses...$s"
+            + "#$b#If only I had my magnifying glasses, I could search for my magnifying glasses...$s"
+            + "#$action AddMail Current " + SEEN_LOST_DIALOGUE_FLAG + " received";
+
+        private const string DIALOGUE_FOUND =
+            "Oh hey, you found my missing magnifying glasses.. No no, you should keep it.. I insist.. Finder's keeper's an' all..$h"
+            + "#$action AddMail Current " + SEEN_FOUND_DIALOGUE_FLAG + " received";
 
         // Unique item ID — namespaced to avoid conflicts
         private const string ITEM_ID = "Raghu.KMG.MagnifyingGlass";
@@ -79,7 +87,6 @@ namespace KrobusMagnifyingGlass
                             "not_placeable",
                             "prevent_loss_on_death",
                             "not_giftable",
-                            "not_placeable",
                             "not_museum_donatable",
                         }
                     };
@@ -99,12 +106,13 @@ namespace KrobusMagnifyingGlass
             }
 
             // --- Patch the Dialogue event ---
-            if (e.NameWithoutLocale.IsEquivalentTo("Characters/Dialogue/Krobus.json"))
+            if (e.NameWithoutLocale.IsEquivalentTo("Characters/Dialogue/Krobus"))
             {
                 e.Edit(asset =>
                 {
                     var dialogues = asset.AsDictionary<string, string>().Data;
-                    dialogues.Add(TOPIC_LOST_GLASSES, DIALOGUE);
+                    dialogues[TOPIC_LOST_GLASSES] = DIALOGUE_LOST;
+                    dialogues[TOPIC_FOUND_GLASSES] = DIALOGUE_FOUND;
                 });
             }
         }
@@ -136,6 +144,9 @@ namespace KrobusMagnifyingGlass
                 // Grant the wallet item
                 e.Player.hasMagnifyingGlass = true;
 
+                // Set custom flag to indicate player bought the item from Krobus
+                e.Player.mailReceived.Add(BOUGHT_FROM_KROBUS_FLAG);
+
                 // Force-close the shop dialog
                 Game1.activeClickableMenu?.exitThisMenu();
 
@@ -159,6 +170,7 @@ namespace KrobusMagnifyingGlass
             {
                 UpdateKrobusShop(shop);
             }
+            UpdateKrobusDialogue();
         }
 
         /**
@@ -176,11 +188,6 @@ namespace KrobusMagnifyingGlass
                 var entryId = $"{ITEM_ID}_Stock";
                 if (shop.Items.Exists(i => i.Id == entryId)) return;
 
-                // TODO: Add conditional Krobus dialogue lines:
-                //   - If player hasn't obtained the Magnifying Glass yet:
-                //      "I lost my magnifying glasses, if only I had my magnifying glasses, I could search for my magnifying glasses"
-                //   - If player has obtained it (HasMagnifyingGlass flag set):
-                //     "Oh hey, you found my missing magnifying glasses.. No no, you should keep it.. I insist.. Finder's keeper's an' all.."
                 shop.Items.Add(new ShopItemData
                 {
                     Id = entryId,
@@ -199,6 +206,8 @@ namespace KrobusMagnifyingGlass
 
         private void UpdateKrobusDialogue()
         {
+            if (Game1.player.mailReceived.Contains(BOUGHT_FROM_KROBUS_FLAG)) return;
+
             // Record that the player met Krobus while the item was still available
             if (Game1.stats.DaysPlayed <= DAYS_AVAILABLE)
             {
@@ -215,7 +224,19 @@ namespace KrobusMagnifyingGlass
                 // If player met Krobus before item was stolen, then they know about the item and its loss
                 if (Game1.player.mailReceived.Contains(MET_KROBUS_BEFORE_WINTER1_FLAG))
                 {
-                    Game1.player.activeDialogueEvents.TryAdd(TOPIC_LOST_GLASSES, 21);
+                    bool saidLost = Game1.player.mailReceived.Contains(SEEN_LOST_DIALOGUE_FLAG);
+                    bool saidFound = Game1.player.mailReceived.Contains(SEEN_FOUND_DIALOGUE_FLAG);
+                    if (!saidLost)
+                    {
+                        Game1.player.activeDialogueEvents.TryAdd(TOPIC_LOST_GLASSES, 21);
+                    }
+                    else
+                    {
+                        if (Game1.player.hasMagnifyingGlass && !saidFound)
+                        {
+                            Game1.player.activeDialogueEvents.TryAdd(TOPIC_FOUND_GLASSES, 21);
+                        }
+                    }
                 }
             }
         }
