@@ -4,6 +4,7 @@ using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.GameData.Objects;
 using StardewValley.GameData.Shops;
+using StardewValley.Locations;
 using StardewValley.Objects;
 
 namespace KrobusMagnifyingGlass
@@ -46,6 +47,8 @@ namespace KrobusMagnifyingGlass
             helper.Events.Content.AssetRequested += OnAssetRequested;
             helper.Events.Player.InventoryChanged += OnInventoryChanged;
             helper.Events.GameLoop.DayStarted += OnDayStarted;
+            helper.Events.Player.Warped += OnWarped;
+            helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
         }
 
         /**
@@ -62,6 +65,31 @@ namespace KrobusMagnifyingGlass
             {
                 e.Edit(asset =>
                 {
+                    // Adding a custom item to "Data/Objects" increases the object table size by 1.
+                    // The traveling cart and other shops use RANDOM_ITEMS which calls random.Next()
+                    // once per object in the full table during shuffling, regardless of whether the
+                    // object appears in the shop. This shifts the RNG state, corrupting price and
+                    // quantity predictions in tools like:
+                    //   https://github.com/MouseyPounds/stardew-predictor
+                    //   https://github.com/krishraghuram/stardew-seed-searcher
+                    // Workaround: only inject the item into Data/Objects when strictly necessary.
+                    // We can skip when:
+                    // Player is not in Sewer
+                    if (!IsSewerLocation(Game1.player.currentLocation))
+                    {
+                        return;
+                    }
+                    // Player already has magnifying glass power
+                    if (Game1.player.hasMagnifyingGlass)
+                    {
+                        return;
+                    }
+                    // It is Wed or Fri (since Krobus sells random fish/dish, and we dont want to affect it's RNG)
+                    if (Game1.stats.DaysPlayed % 7 == 3 || Game1.stats.DaysPlayed % 7 == 6)
+                    {
+                        return;
+                    }
+
                     var data = asset.AsDictionary<string, ObjectData>().Data;
                     data[ITEM_ID] = new ObjectData
                     {
@@ -167,6 +195,7 @@ namespace KrobusMagnifyingGlass
 
         private void OnDayStarted(object? sender, DayStartedEventArgs e)
         {
+            Helper.GameContent.InvalidateCache("Data/Objects");
             // Ensure the shop stock is updated at the start of each day, in case the player buys the item or time advances past the availability window
             if (Game1.content.Load<Dictionary<string, ShopData>>("Data/Shops").TryGetValue("ShadowShop", out var shop))
             {
@@ -241,6 +270,25 @@ namespace KrobusMagnifyingGlass
                     }
                 }
             }
+        }
+
+        private void OnWarped(object? sender, WarpedEventArgs e)
+        {
+            bool wasInSewer = IsSewerLocation(e.OldLocation);
+            bool nowInSewer = IsSewerLocation(e.NewLocation);
+
+            if (wasInSewer != nowInSewer)
+                Helper.GameContent.InvalidateCache("Data/Objects");
+        }
+
+        private static bool IsSewerLocation(GameLocation loc)
+            => loc is Sewer;
+
+        private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
+        {
+            if (!Game1.player.hasMagnifyingGlass) return;
+            Helper.GameContent.InvalidateCache("Data/Objects");
+            Helper.Events.GameLoop.UpdateTicked -= OnUpdateTicked;
         }
     }
 }
